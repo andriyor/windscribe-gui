@@ -16,8 +16,7 @@ const {
   Select,
   FormControl,
   createMuiTheme,
-  Button,
-  green
+  Button
 } = MaterialUI;
 
 // Create a theme instance.
@@ -53,22 +52,37 @@ const useStyles = makeStyles((theme) => ({
 
 function App() {
   const classes = useStyles();
+  const FIVE_MINUTES = 300000;
   
-  React.useEffect(() => {
+  React.useEffect(() => setLocation(), []);
+  
+  const [currentLocation, setCurrentLocation] = React.useState('');
+  const [locations, setLocations] = React.useState([]);
+  const [accountInfo, setAccountInfo] = React.useState('');
+  const [isEnabled, setIsEnabled] = React.useState(false);
+  
+  function setLocation() {
     execa('windscribe', ['locations']).then(({stdout}) => {
       const allLocations = parseLocations(stdout);
       const freeLocations = getFreeLocations(allLocations);
       setLocations(freeLocations);
-      
-      execa('windscribe', ['status']).then(({stdout}) => {
-        handleStatus(stdout);
-      })
+      setStatus();
     })
-  }, []);
+  }
   
-  const [currentLocation, setCurrentLocation] = React.useState('');
-  const [locations, setLocations] = React.useState([]);
-  const [isEnabled, setIsEnabled] = React.useState(false);
+  function setAccount() {
+    execa('windscribe', ['account']).then(({stdout}) => {
+      setAccountInfo(stdout);
+    })
+  }
+  
+  function setStatus() {
+    execa('windscribe', ['status']).then(({stdout}) => {
+      handleStatus(stdout);
+      setAccount();
+      setInterval(() => setAccount(), FIVE_MINUTES);
+    })
+  }
   
   function parseLocations(locationsStdout) {
     const allLocations = locationsStdout.split('\n').slice(1);
@@ -127,7 +141,7 @@ function App() {
   const color = isEnabled ? '#4caf50': 'white';
   return (
     <Container maxWidth="sm">
-      <div style={{ marginTop: 24, display: 'flex' }}>
+      <div style={{ marginTop: 24, display: 'flex', marginBottom: 50 }}>
         <FormControl className={classes.formControl}>
           <InputLabel id="demo-simple-select-label">Location</InputLabel>
           <Select labelId="demo-simple-select-label"
@@ -150,6 +164,9 @@ function App() {
         >
           {isEnabled? 'Disconnect' : 'Connect'}
         </Button>
+      </div>
+      <div style={{whiteSpace: 'pre-wrap'}}>
+        {accountInfo}
       </div>
     </Container>
 );
